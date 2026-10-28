@@ -8,6 +8,7 @@ An interactive web-based quiz application covering System Software concepts:
 
 ## Features
 - 19 categorized questions across Easy, Medium, and Hard difficulty tiers
+- Automatic randomization and shuffling of question order and answer options per user attempt
 - Immediate feedback with detailed explanations and references
 - Interactive progress meter and real-time score tracking
 - Performance breakdown by difficulty level
