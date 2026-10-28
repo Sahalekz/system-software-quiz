@@ -1,0 +1,417 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>System Software Quiz</title>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+  <style>
+    /* Layout: one centred column, a 20-cell progress strip above a single question card, then a results and review view. */
+    :root {
+      --bg: #edf0f5;
+      --surface: #ffffff;
+      --ink: #0f1b33;
+      --ink-2: #4a566e;
+      --line: #d3d9e4;
+      --accent: #1b4dd8;
+      --accent-ink: #ffffff;
+      --accent-soft: #e4ebfc;
+      --good: #13795b;
+      --good-bg: #e2f3ec;
+      --bad: #b3261e;
+      --bad-bg: #fbe8e6;
+      --font-body: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+      --font-mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root:not([data-theme="light"]) {
+        --bg: #0a1020;
+        --surface: #121a2e;
+        --ink: #e7ecf6;
+        --ink-2: #9aa8c2;
+        --line: #25304a;
+        --accent: #7ea2ff;
+        --accent-ink: #0a1020;
+        --accent-soft: #1a2747;
+        --good: #5cd0a6;
+        --good-bg: #10302a;
+        --bad: #ff8c84;
+        --bad-bg: #3a1816;
+        color-scheme: dark;
+      }
+    }
+    :root[data-theme="dark"] {
+      --bg: #0a1020;
+      --surface: #121a2e;
+      --ink: #e7ecf6;
+      --ink-2: #9aa8c2;
+      --line: #25304a;
+      --accent: #7ea2ff;
+      --accent-ink: #0a1020;
+      --accent-soft: #1a2747;
+      --good: #5cd0a6;
+      --good-bg: #10302a;
+      --bad: #ff8c84;
+      --bad-bg: #3a1816;
+      color-scheme: dark;
+    }
+
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--ink);
+      font-family: var(--font-body);
+      font-size: 16px;
+      line-height: 1.55;
+      padding-block: 28px 56px;
+      padding-left: max(16px, env(safe-area-inset-left, 0px));
+      padding-right: max(16px, env(safe-area-inset-right, 0px));
+    }
+    .wrap { max-width: 720px; margin: 0 auto; display: flex; flex-direction: column; gap: 20px; }
+    .mono { font-family: var(--font-mono); }
+
+    header { display: flex; flex-direction: column; gap: 6px; }
+    .eyebrow { font-family: var(--font-mono); font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-2); }
+    h1 { margin: 0; font-size: clamp(1.7rem, 5vw, 2.3rem); line-height: 1.12; font-weight: 600; letter-spacing: -0.01em; text-wrap: balance; }
+    .sub { margin: 0; color: var(--ink-2); }
+
+    .meter { display: flex; flex-direction: column; gap: 8px; }
+    .meter-top { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; flex-wrap: wrap; font-family: var(--font-mono); font-size: 12px; letter-spacing: 0.04em; color: var(--ink-2); }
+    .cells { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(var(--n, 20), 1fr); gap: 3px; }
+    .cell { height: 8px; background: var(--line); }
+    .cell.ok { background: var(--good); }
+    .cell.no { background: var(--bad); }
+    .cell.now { background: var(--accent); }
+
+    .card { background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: 22px 20px; display: flex; flex-direction: column; gap: 18px; }
+    .card:focus { outline: none; }
+    .qhead { display: flex; justify-content: space-between; align-items: center; gap: 12px; font-family: var(--font-mono); font-size: 12px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-2); }
+    .lv { display: inline-flex; align-items: center; gap: 8px; }
+    .bars { display: inline-flex; align-items: flex-end; gap: 2px; height: 12px; }
+    .bars i { width: 4px; background: var(--line); display: block; }
+    .bars i:nth-child(1) { height: 5px; }
+    .bars i:nth-child(2) { height: 8px; }
+    .bars i:nth-child(3) { height: 12px; }
+    .bars i.on { background: var(--accent); }
+    .qtext { margin: 0; font-size: clamp(1.1rem, 3.4vw, 1.3rem); line-height: 1.4; font-weight: 500; text-wrap: pretty; }
+    .qtext:focus { outline: none; }
+
+    .opts { display: flex; flex-direction: column; gap: 10px; }
+    .opt {
+      display: flex; align-items: flex-start; gap: 12px; width: 100%; text-align: left;
+      font: inherit; color: var(--ink); background: var(--surface);
+      border: 1px solid var(--line); border-radius: 5px; padding: 12px 14px; cursor: pointer; min-width: 0;
+    }
+    .opt .key { flex: none; width: 26px; height: 26px; display: grid; place-items: center; font-family: var(--font-mono); font-size: 12px; border: 1px solid var(--line); border-radius: 3px; color: var(--ink-2); }
+    .opt .txt { min-width: 0; overflow-wrap: anywhere; padding-top: 2px; }
+    .opt:hover:not([aria-disabled="true"]) { border-color: var(--accent); background: var(--accent-soft); }
+    .opt:focus-visible, .btn:focus-visible, .link:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+    .opt[aria-disabled="true"] { cursor: default; }
+    .opt.right { border-color: var(--good); background: var(--good-bg); }
+    .opt.right .key { background: var(--good); border-color: var(--good); color: var(--surface); }
+    .opt.wrong { border-color: var(--bad); background: var(--bad-bg); }
+    .opt.wrong .key { background: var(--bad); border-color: var(--bad); color: var(--surface); }
+    .opt.dim { opacity: 0.55; }
+
+    .feedback { border-top: 1px solid var(--line); padding-top: 16px; display: flex; flex-direction: column; gap: 10px; }
+    .verdict { margin: 0; font-weight: 600; }
+    .verdict.ok { color: var(--good); }
+    .verdict.no { color: var(--bad); }
+    .why { margin: 0; color: var(--ink-2); }
+    .ref { font-family: var(--font-mono); font-size: 12px; color: var(--ink-2); }
+
+    .btn {
+      align-self: flex-start; font: inherit; font-weight: 600; cursor: pointer;
+      background: var(--accent); color: var(--accent-ink); border: 1px solid var(--accent); border-radius: 5px; padding: 10px 18px;
+    }
+    .btn.ghost { background: transparent; color: var(--accent); }
+    .btn:hover { filter: brightness(1.08); }
+    .link { font: inherit; background: none; border: 0; padding: 0; color: var(--accent); text-decoration: underline; cursor: pointer; }
+
+    /* start screen */
+    .qhead span { min-width: 0; overflow-wrap: anywhere; }
+    .field { display: flex; flex-direction: column; gap: 6px; }
+    .field label { font-weight: 500; }
+    .input { font: inherit; color: var(--ink); background: var(--bg); border: 1px solid var(--line); border-radius: 5px; padding: 11px 12px; width: 100%; min-width: 0; }
+    .input:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-color: var(--accent); }
+    .hint { margin: 0; font-size: 14px; color: var(--ink-2); }
+    .hint.err { color: var(--bad); }
+    .rules { margin: 0; padding-left: 1.1em; color: var(--ink-2); display: flex; flex-direction: column; gap: 4px; }
+    .sumrow { display: flex; gap: 8px; align-items: stretch; }
+    .sumrow .input { flex: 1; font-family: var(--font-mono); font-size: 13px; }
+    .sumrow .btn { align-self: auto; white-space: nowrap; }
+    .share { display: flex; flex-direction: column; gap: 6px; }
+
+    /* results */
+    .score { display: flex; align-items: baseline; gap: 14px; flex-wrap: wrap; }
+    .score .big { font-family: var(--font-mono); font-size: clamp(2.6rem, 11vw, 3.6rem); font-weight: 500; line-height: 1; letter-spacing: -0.02em; }
+    .score .pct { font-family: var(--font-mono); color: var(--ink-2); }
+    .msg { margin: 0; color: var(--ink-2); }
+    .breakdown { display: flex; flex-direction: column; gap: 12px; }
+    .brow { display: grid; grid-template-columns: 72px 1fr auto; align-items: center; gap: 12px; font-family: var(--font-mono); font-size: 13px; }
+    .track { height: 8px; background: var(--line); position: relative; }
+    .fill { position: absolute; inset: 0 auto 0 0; background: var(--accent); }
+    .actions { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; }
+
+    .review-head { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+    .review-head h2 { margin: 0; font-size: 1.1rem; font-weight: 600; }
+    .items { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 12px; }
+    .item { border: 1px solid var(--line); border-radius: 5px; padding: 14px; display: flex; flex-direction: column; gap: 8px; background: var(--surface); }
+    .item.ok { border-left: 4px solid var(--good); }
+    .item.no { border-left: 4px solid var(--bad); }
+    .item .qh { display: flex; justify-content: space-between; gap: 12px; font-family: var(--font-mono); font-size: 12px; color: var(--ink-2); text-transform: uppercase; letter-spacing: 0.05em; }
+    .item p { margin: 0; }
+    .item .q { font-weight: 500; }
+    .item .ans { font-size: 14px; color: var(--ink-2); overflow-wrap: anywhere; }
+    .item .ans b { color: var(--ink); font-weight: 600; }
+    .item .ans .gd { color: var(--good); }
+    .item .ans .bd { color: var(--bad); }
+
+    @media (max-width: 520px) {
+      .card { padding: 18px 14px; }
+      .brow { grid-template-columns: 60px 1fr auto; }
+    }
+    @media (prefers-reduced-motion: no-preference) {
+      .opt, .btn { transition: background-color 0.12s, border-color 0.12s; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="wrap">
+  <header>
+    <div class="eyebrow">Module 3 &middot; Notes 3.1 to 3.7</div>
+    <h1>System Software Quiz</h1>
+    <p class="sub">Operating systems, booting, file systems and device drivers. 19 questions: 9 easy, 5 medium, 5 hard.</p>
+  </header>
+
+  <div class="meter" id="meter" aria-label="Progress"></div>
+  <main id="stage"></main>
+</div>
+
+<script>
+  var Q = [{"id": 1, "level": "easy", "type": "mcq", "ref": "3.1", "q": "In the notes' analogy, which part of a computer is the \"mind\" that gives instructions?", "options": ["Hardware", "Software", "The CPU", "The hard drive"], "answer": 1, "why": "Hardware is the body of the computer. Software is the mind that tells the hardware what to do."}, {"id": 2, "level": "easy", "type": "tf", "ref": "3.2.2", "q": "System software acts as a bridge between computer hardware and application software.", "options": ["True", "False"], "answer": 0, "why": "System software manages the hardware and gives application software a stable platform to run on."}, {"id": 3, "level": "medium", "type": "mcq", "ref": "3.4.2", "q": "Which sequence shows the correct order of the boot stages?", "options": ["Bootloader → Firmware initialization (POST) → Kernel initialization → User environment ready", "Firmware initialization (POST) → Kernel initialization → Bootloader → User environment ready", "Firmware initialization (POST) → Bootloader → Kernel initialization → User environment ready", "Kernel initialization → Bootloader → Firmware initialization (POST) → User environment ready"], "answer": 2, "why": "BIOS or UEFI runs POST first. The bootloader then loads the kernel, the kernel initializes drivers and services, and the login screen or desktop appears."}, {"id": 4, "level": "easy", "type": "mcq", "ref": "3.2.1", "q": "Which of these is application software?", "options": ["Printer driver", "BIOS", "GRUB", "Google Chrome"], "answer": 3, "why": "A web browser is application software for end users. Drivers, BIOS firmware and the GRUB bootloader work at the system level."}, {"id": 6, "level": "hard", "type": "mcq", "ref": "3.4.2", "q": "A PC has an 8 TB SSD, and its firmware setup screen works with a mouse. Which firmware and partition style does it most likely use?", "options": ["BIOS with MBR", "BIOS with GPT", "UEFI with GPT", "UEFI with MBR"], "answer": 2, "why": "BIOS is text-based, keyboard-only and limited to disks up to 2.2 TB. UEFI has a graphical interface with mouse support and uses GPT, which supports disks larger than 2.2 TB."}, {"id": 7, "level": "easy", "type": "mcq", "ref": "3.4.1", "q": "What does POST stand for?", "options": ["Power-On Self-Test", "Primary Operating System Task", "Peripheral Output Status Table", "Power-Off Shutdown Timer"], "answer": 0, "why": "POST is the first diagnostic step run by the BIOS or UEFI. It checks the CPU, RAM, storage and peripherals before the operating system loads."}, {"id": 8, "level": "easy", "type": "tf", "ref": "3.2.2", "q": "Firmware is stored in volatile memory, so its contents are erased when the power is switched off.", "options": ["True", "False"], "answer": 1, "why": "Firmware is stored in non-volatile memory, so it stays in place when the device is powered off. BIOS/UEFI and router firmware are examples."}, {"id": 9, "level": "medium", "type": "mcq", "ref": "3.3.2", "q": "Which of these is an example of a multi-user, multi-tasking operating system?", "options": ["Unix", "MS-DOS", "macOS", "Windows on a home desktop"], "answer": 0, "why": "Unix, Linux server distributions and Windows Server let several users work at once. MS-DOS is single-user and single-tasking, while desktop Windows and macOS are single-user multitasking."}, {"id": 10, "level": "easy", "type": "mcq", "ref": "3.6.1", "q": "Which file system is the default for modern Windows?", "options": ["ext4", "APFS", "NTFS", "XFS"], "answer": 2, "why": "NTFS was introduced with Windows NT and is the default for modern Windows. ext4 and XFS are Linux file systems, and APFS is used by macOS."}, {"id": 11, "level": "easy", "type": "mcq", "ref": "3.3", "q": "Which of these uses a Command Line Interface (CLI)?", "options": ["The Linux terminal", "The Windows desktop with icons", "macOS windows and menus", "A phone home screen"], "answer": 0, "why": "A CLI is text-based and the user types commands. Windows and macOS desktops use a graphical user interface (GUI)."}, {"id": 12, "level": "medium", "type": "mcq", "ref": "3.6.1 and 3.6.2", "q": "Both NTFS and ext4 log file system changes before writing them permanently. What is this technique called?", "options": ["Compression", "Journaling", "Disk quotas", "Chain-loading"], "answer": 1, "why": "Journaling keeps a transaction log, so the file system can recover quickly after a crash or sudden power loss."}, {"id": 13, "level": "easy", "type": "tf", "ref": "3.3.2", "q": "Linux is an open-source operating system, so its source code can be viewed, modified and distributed.", "options": ["True", "False"], "answer": 0, "why": "Linux is open source, with distributions such as Ubuntu, Fedora and Debian. Windows, macOS and iOS are proprietary."}, {"id": 14, "level": "hard", "type": "mcq", "ref": "3.5.2, GRUB", "q": "On a UEFI system, where are GRUB's EFI boot files stored?", "options": ["In the swap partition", "In the disk's MBR", "In the Windows Boot Configuration Data", "In the EFI System Partition (ESP)"], "answer": 3, "why": "UEFI systems keep GRUB's EFI boot files in the EFI System Partition. Legacy BIOS systems use the MBR-based boot area instead."}, {"id": 15, "level": "easy", "type": "mcq", "ref": "3.5.2, GRUB", "q": "GRUB stands for:", "options": ["GRand Unified Bootloader", "General Resource Utility Booter", "Graphical Root User Boot", "Great Universal Boot Record"], "answer": 0, "why": "GRUB is the bootloader widely used on Linux systems, especially when more than one operating system is installed."}, {"id": 16, "level": "medium", "type": "mcq", "ref": "3.5.2, BOOTMGR", "q": "In Windows, what does the Boot Configuration Data (BCD) do?", "options": ["It stores the user's files and settings", "It is the database that tells BOOTMGR how to start the system", "It encrypts the disk before startup", "It tests the RAM during POST"], "answer": 1, "why": "The BCD works like an instruction manual for the Windows Boot Manager (BOOTMGR), telling it exactly how to start the computer."}, {"id": 17, "level": "hard", "type": "mcq", "ref": "3.6.2", "q": "Which ext4 feature replaces block-mapping with continuous storage regions to reduce fragmentation?", "options": ["Delayed allocation", "Journaling", "Extent-based storage", "Backward compatibility"], "answer": 2, "why": "Extents are continuous storage regions. Delayed allocation is a separate feature that groups write operations before committing them to disk."}, {"id": 18, "level": "medium", "type": "mcq", "ref": "3.5.2, Dual Booting", "q": "A user dual-boots Windows and Ubuntu. After a Windows update, the boot menu no longer lists Ubuntu. Which challenge of dual booting does this show?", "options": ["Too little disk space was given to Linux", "The two operating systems use different file systems", "Device drivers are missing", "Updates can affect the boot configuration, so the boot menu may need repair"], "answer": 3, "why": "Operating-system updates or partition changes can alter the boot configuration. The boot menu may then need to be repaired or reconfigured."}, {"id": 19, "level": "hard", "type": "mcq", "ref": "3.3.3", "q": "According to the notes, which statement describes forward compatibility?", "options": ["Older software keeps working on newer hardware through updates or emulation", "New software supports older hardware", "Windows Update installs new drivers automatically", "Applications control hardware directly without an OS"], "answer": 0, "why": "That is forward compatibility. Backward compatibility is the reverse: new software supporting older hardware."}, {"id": 20, "level": "hard", "type": "tf", "ref": "3.5.2, GRUB", "q": "In chain-loading, GRUB loads the Windows kernel itself instead of handing control to another boot loader.", "options": ["True", "False"], "answer": 1, "why": "In chain-loading, GRUB hands control to the Windows Boot Manager, which starts the Windows boot loader and then Windows."}];
+  var LV = { easy: 1, medium: 2, hard: 3 };
+  var LETTERS = ["A", "B", "C", "D"];
+  var cur = 0;
+  var picks = new Array(Q.length).fill(null);
+  var onlyMissed = false;
+  var person = "";
+  var started = false;
+
+  var meter = document.getElementById("meter");
+  var stage = document.getElementById("stage");
+
+  function esc(s) {
+    return String(s).replace(/[&<>"']/g, function (c) {
+      return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c];
+    });
+  }
+  function cap(s) { return s.charAt(0).toUpperCase() + s.slice(1); }
+  function bars(level) {
+    var n = LV[level], h = "";
+    for (var k = 1; k <= 3; k++) h += '<i class="' + (k <= n ? "on" : "") + '"></i>';
+    return '<span class="lv"><span class="bars" aria-hidden="true">' + h + "</span>" + cap(level) + "</span>";
+  }
+  function isRight(n) { return picks[n] === Q[n].answer; }
+  function totalRight() { var t = 0; for (var n = 0; n < Q.length; n++) if (isRight(n)) t++; return t; }
+  function finished() { return cur >= Q.length; }
+
+  function renderMeter() {
+    var done = picks.filter(function (p) { return p !== null; }).length;
+    var cells = "";
+    for (var n = 0; n < Q.length; n++) {
+      var c = "cell";
+      if (picks[n] !== null) c += isRight(n) ? " ok" : " no";
+      else if (n === cur && !finished()) c += " now";
+      cells += '<li class="' + c + '"></li>';
+    }
+    var left = finished() ? "Finished" : "Question " + (cur + 1) + " of " + Q.length;
+    var right = totalRight() + " correct of " + done + " answered";
+    meter.innerHTML =
+      '<div class="meter-top"><span>' + left + "</span><span>" + right + "</span></div>" +
+      '<ol class="cells" style="--n:' + Q.length + '">' + cells + "</ol>";
+  }
+
+  function renderStart() {
+    meter.innerHTML = "";
+    stage.innerHTML =
+      '<form class="card" id="startform" novalidate>' +
+      '<div class="qhead"><span>Before you begin</span></div>' +
+      '<div class="field"><label for="person">Your name</label>' +
+      '<input class="input" id="person" name="person" type="text" autocomplete="name" maxlength="60" placeholder="Full name" aria-describedby="namehint" value="' + esc(person) + '">' +
+      '<p class="hint" id="namehint">Your name appears on your result screen.</p></div>' +
+      '<ul class="rules"><li>One answer per question. The correct answer and an explanation show straight away.</li>' +
+      '<li>On a keyboard, press A to D or 1 to 4 to answer.</li></ul>' +
+      '<button type="submit" class="btn">Start quiz</button></form>';
+  }
+
+  function renderQuestion(focusIt) {
+    var q = Q[cur];
+    var answered = picks[cur] !== null;
+    var opts = "";
+    q.options.forEach(function (o, k) {
+      var cls = "opt";
+      if (answered) {
+        if (k === q.answer) cls += " right";
+        else if (k === picks[cur]) cls += " wrong";
+        else cls += " dim";
+      }
+      opts +=
+        '<button type="button" class="' + cls + '" data-k="' + k + '"' + (answered ? ' aria-disabled="true"' : "") + ">" +
+        '<span class="key">' + LETTERS[k] + '</span><span class="txt">' + esc(o) + "</span></button>";
+    });
+    var fb = "";
+    if (answered) {
+      var ok = isRight(cur);
+      var last = cur === Q.length - 1;
+      fb =
+        '<div class="feedback" aria-live="polite">' +
+        '<p class="verdict ' + (ok ? "ok" : "no") + '">' + (ok ? "Correct." : "Not quite. The answer is " + LETTERS[q.answer] + ".") + "</p>" +
+        '<p class="why">' + esc(q.why) + "</p>" +
+        '<span class="ref">Notes section ' + esc(q.ref) + "</span>" +
+        '<button type="button" class="btn" id="next">' + (last ? "See results" : "Next question") + "</button>" +
+        "</div>";
+    }
+    stage.innerHTML =
+      '<section class="card" tabindex="-1" id="card">' +
+      '<div class="qhead"><span>Q' + String(cur + 1).padStart(2, "0") + " / " + Q.length + "</span>" + bars(q.level) + "</div>" +
+      '<h2 class="qtext" tabindex="-1" id="qtext">' + esc(q.q) + "</h2>" +
+      '<div class="opts" role="group" aria-labelledby="qtext">' + opts + "</div>" +
+      fb + "</section>";
+    renderMeter();
+    if (answered) {
+      var nb = document.getElementById("next");
+      if (nb) nb.focus({ preventScroll: true });
+    } else if (focusIt) {
+      document.getElementById("qtext").focus({ preventScroll: true });
+      var card = document.getElementById("card");
+      if (card && card.getBoundingClientRect().top < 0) card.scrollIntoView({ block: "start" });
+    }
+  }
+
+  function levelTotals() {
+    var t = { easy: [0, 0], medium: [0, 0], hard: [0, 0] };
+    Q.forEach(function (q, n) { t[q.level][1]++; if (isRight(n)) t[q.level][0]++; });
+    return t;
+  }
+
+  function renderResults() {
+    var right = totalRight(), n = Q.length;
+    var pct = Math.round((right / n) * 100);
+    var msg = pct >= 90 ? "Excellent. You know this module well."
+      : pct >= 70 ? "Good work. Check the questions you missed below."
+      : pct >= 50 ? "A fair start. Re-read the sections listed against your missed questions."
+      : "Go back through the notes, then try again.";
+    var t = levelTotals(), rows = "";
+    ["easy", "medium", "hard"].forEach(function (l) {
+      var p = t[l][1] ? (t[l][0] / t[l][1]) * 100 : 0;
+      rows += '<div class="brow"><span>' + cap(l) + '</span><span class="track" aria-hidden="true"><span class="fill" style="width:' + p + '%"></span></span><span>' + t[l][0] + " / " + t[l][1] + "</span></div>";
+    });
+    var missed = n - right;
+    var missedNums = [];
+    Q.forEach(function (q, k) { if (!isRight(k)) missedNums.push("Q" + (k + 1)); });
+    var summary = person + " | Score " + right + "/" + n + " (" + pct + "%) | Easy " + t.easy[0] + "/" + t.easy[1] +
+      ", Medium " + t.medium[0] + "/" + t.medium[1] + ", Hard " + t.hard[0] + "/" + t.hard[1] +
+      " | Missed: " + (missedNums.length ? missedNums.join(", ") : "none");
+    stage.innerHTML =
+      '<section class="card" id="card" tabindex="-1">' +
+      '<div class="qhead"><span>Result &middot; ' + esc(person) + "</span></div>" +
+      '<div class="score"><span class="big">' + right + " / " + n + '</span><span class="pct">' + pct + "%</span></div>" +
+      '<p class="msg">' + msg + "</p>" +
+      '<div class="breakdown">' + rows + "</div>" +
+      '<div class="share"><label class="hint" for="sum">Result summary you can copy and send</label>' +
+      '<div class="sumrow"><input class="input" id="sum" readonly value="' + esc(summary) + '">' +
+      '<button type="button" class="btn ghost" id="copy">Copy</button></div></div>' +
+      '<div class="actions"><button type="button" class="btn" id="retake">Retake quiz</button></div>' +
+      "</section>" +
+      '<section style="margin-top:20px; display:flex; flex-direction:column; gap:12px">' +
+      '<div class="review-head"><h2>Answer review</h2>' +
+      (missed ? '<button type="button" class="link" id="filter">' + (onlyMissed ? "Show all questions" : "Show only missed (" + missed + ")") + "</button>" : "") +
+      '</div><ol class="items" id="items"></ol></section>';
+    var list = "";
+    Q.forEach(function (q, k) {
+      var ok = isRight(k);
+      if (onlyMissed && ok) return;
+      list +=
+        '<li class="item ' + (ok ? "ok" : "no") + '"><div class="qh"><span>Q' + String(k + 1).padStart(2, "0") + " &middot; " + cap(q.level) + "</span><span>" + (ok ? "Correct" : "Missed") + "</span></div>" +
+        '<p class="q">' + esc(q.q) + "</p>" +
+        '<p class="ans">' + (ok ? "" : 'Your answer: <span class="bd">' + esc(q.options[picks[k]]) + "</span><br>") +
+        'Correct answer: <b class="gd">' + esc(q.options[q.answer]) + "</b></p>" +
+        '<p class="why">' + esc(q.why) + '</p><span class="ref">Notes section ' + esc(q.ref) + "</span></li>";
+    });
+    document.getElementById("items").innerHTML = list;
+    renderMeter();
+  }
+
+  function choose(k) {
+    if (finished() || picks[cur] !== null) return;
+    if (k < 0 || k >= Q[cur].options.length) return;
+    picks[cur] = k;
+    renderQuestion(false);
+  }
+  function next() {
+    cur++;
+    if (finished()) { renderResults(); window.scrollTo(0, 0); }
+    else renderQuestion(true);
+  }
+  function retake() {
+    cur = 0; onlyMissed = false;
+    picks = new Array(Q.length).fill(null);
+    renderQuestion(true);
+    window.scrollTo(0, 0);
+  }
+
+  stage.addEventListener("click", function (e) {
+    var t = e.target;
+    if (!t || !t.closest) return;
+    var opt = t.closest(".opt");
+    if (opt) { choose(parseInt(opt.getAttribute("data-k"), 10)); return; }
+    if (t.closest("#next")) { next(); return; }
+    if (t.closest("#retake")) { retake(); return; }
+    if (t.closest("#copy")) { copyResult(); return; }
+    if (t.closest("#filter")) { onlyMissed = !onlyMissed; renderResults(); }
+  });
+  stage.addEventListener("submit", function (e) {
+    if (!e.target || e.target.id !== "startform") return;
+    e.preventDefault();
+    var input = document.getElementById("person");
+    var hint = document.getElementById("namehint");
+    var v = input.value.replace(/\s+/g, " ").trim();
+    if (!v) {
+      hint.textContent = "Enter your name to start.";
+      hint.className = "hint err";
+      input.setAttribute("aria-invalid", "true");
+      input.focus();
+      return;
+    }
+    person = v;
+    started = true;
+    renderQuestion(true);
+  });
+  function copyResult() {
+    var inp = document.getElementById("sum"), btn = document.getElementById("copy");
+    if (!inp || !btn) return;
+    var pick = function () { inp.focus(); inp.select(); btn.textContent = "Selected, now copy"; };
+    try {
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(inp.value).then(function () { btn.textContent = "Copied"; }, pick);
+      } else { pick(); }
+    } catch (err) { pick(); }
+  }
+  document.addEventListener("keydown", function (e) {
+    if (e.ctrlKey || e.metaKey || e.altKey || !started) return;
+    var tg = e.target && e.target.tagName;
+    if (tg === "INPUT" || tg === "TEXTAREA") return;
+    var key = e.key.toLowerCase();
+    var k = LETTERS.map(function (l) { return l.toLowerCase(); }).indexOf(key);
+    if (k < 0 && key >= "1" && key <= "4") k = parseInt(key, 10) - 1;
+    if (k >= 0) choose(k);
+  });
+
+  renderStart();
+</script>
+
+</body>
+</html>
